@@ -19,6 +19,8 @@ type ImageSet struct {
 	SortID int
 }
 
+var imageExt string = "*.ccd"
+
 // sortCmd represents the sort command
 var sortCmd = &cobra.Command{
 	Use:   "sort",
@@ -61,26 +63,13 @@ func buildMap(rootPath string) []ImageSet {
 
 	var imgSet []ImageSet
 
-	//TODO Glob here - walk is a waste
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Printf("prevent panic by handling failure walking a path %q: %v\n", path, err)
-			return err
-		}
-		if !info.IsDir() && filepath.Ext(info.Name()) == ".ccd" {
+	globber := filepath.Join(rootPath, "**", imageExt)
+	fmt.Println("Globbing on: ", globber)
+	matches, _ := filepath.Glob(globber)
+    for _, match := range matches {
+		imgSet = append(imgSet, ImageSet{filepath.Dir(match), filepath.Base(match), 0})
 
-			imgSet = append(imgSet, ImageSet{filepath.Dir(path), filepath.Base(info.Name()), 0})
-
-			fmt.Printf("Adding CCD: %s at path %s\n", info.Name(), filepath.Dir(path))
-			return nil
-		}
-		// fmt.Printf("visited file or dir: %q\n", path)
-		return nil
-	})
-
-	if err != nil {
-		fmt.Printf("error walking the path %q: %v\n", rootPath, err)
-		return nil
+		fmt.Printf("Adding Disc Image: %s at path %s\n", filepath.Base(match), filepath.Dir(match))
 	}
 
 	return imgSet
