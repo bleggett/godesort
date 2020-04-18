@@ -110,6 +110,12 @@ func finalRenameSortedDirs(rootDir string, tmpPostfix string) {
     for _, match := range matches {
 		trimPath := strings.TrimSuffix(match, tmpPostfix)
 		fmt.Printf("Dropping postfix - moving %s to %s", match, trimPath)
+
+		if _, err := os.Stat(trimPath); !os.IsNotExist(err) {
+			fmt.Printf("Clearing out existing %s to %s-old\n", trimPath, trimPath)
+			//TODO handle rename error
+		    os.Rename(trimPath, fmt.Sprintf("%s-old", trimPath))
+		}
 		os.Rename(match, trimPath)
     }
 }
