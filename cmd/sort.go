@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strconv"
 	"os"
+	"strings"
 	"path"
 	"path/filepath"
 	"github.com/rs/xid"
@@ -34,7 +34,8 @@ to quickly create a Cobra application.`,
 		fmt.Printf("sort called on %s\n", path)
 		imgSet := buildMap(path)
 		imgSet = sortImageSet(imgSet)
-		renameSortedImageSet(path, imgSet)
+		tmpSuffix := tempRenameSortedImageSet(path, imgSet)
+		finalRenameSortedDirs(path, tmpSuffix)
 	},
 }
 
@@ -60,6 +61,7 @@ func buildMap(rootPath string) []ImageSet {
 
 	var imgSet []ImageSet
 
+	//TODO Glob here - walk is a waste
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure walking a path %q: %v\n", path, err)
@@ -93,14 +95,34 @@ func sortImageSet(imgSet []ImageSet) []ImageSet {
 	return imgSet
 }
 
-func renameSortedImageSet(rootDir string, imgSet []ImageSet) {
+func tempRenameSortedImageSet(rootDir string, imgSet []ImageSet) string {
 	guid := xid.New()
+	tempPostfix := fmt.Sprintf("-%s", guid.String())
+
 	for i, iSet := range imgSet {
 		//TODO Pad name iterator with leading zeroes
-		newDir := path.Join(rootDir, fmt.Sprintf("%s-%s", strconv.Itoa(i+1), guid.String()))
+		newDir := path.Join(rootDir, fmt.Sprintf("%02d%s", (i+2), tempPostfix))
+
+		// if _, err := os.Stat(newDir); !os.IsNotExist(err) {
+		//     // err := os.Rename(newDir, fmt.Sprintf("%s-old", newDir))
+		// 	fmt.Printf("Clearing out existing %s to %s-old\n", newDir, newDir)
+		// }
 		fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
-		// err := os.Rename(iSet.SourceDir,newDir)
+		os.Rename(iSet.SourceDir,newDir)
 	}
+
+	return tempPostfix
+}
+
+func finalRenameSortedDirs(rootDir string, tmpPostfix string) {
+	globber := fmt.Sprintf("%s/*%s", rootDir, tmpPostfix)
+	fmt.Printf("Globbing on %s\n", globber)
+	matches, _ := filepath.Glob(globber)
+    for _, match := range matches {
+		trimPath := strings.TrimSuffix(match, tmpPostfix)
+		fmt.Printf("Dropping postfix - moving %s to %s", match, trimPath)
+		os.Rename(match, trimPath)
+    }
 }
 //scan dir
 //build map of path/imagename
