@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"os"
+	"path"
 	"path/filepath"
+	"github.com/rs/xid"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +33,8 @@ to quickly create a Cobra application.`,
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("sort called on %s\n", path)
 		imgSet := buildMap(path)
-		sortImageSet(imgSet)
+		imgSet = sortImageSet(imgSet)
+		renameSortedImageSet(path, imgSet)
 	},
 }
 
@@ -89,10 +93,20 @@ func sortImageSet(imgSet []ImageSet) []ImageSet {
 	return imgSet
 }
 
+func renameSortedImageSet(rootDir string, imgSet []ImageSet) {
+	guid := xid.New()
+	for i, iSet := range imgSet {
+		//TODO Pad name iterator with leading zeroes
+		newDir := path.Join(rootDir, fmt.Sprintf("%s-%s", strconv.Itoa(i+1), guid.String()))
+		fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
+		// err := os.Rename(iSet.SourceDir,newDir)
+	}
+}
 //scan dir
 //build map of path/imagename
 
 //Sort alphabetically based on imagename
 //rename all to correctfolderid-<UNIQUE SLUG>
 //<optionally test if current path is correct and skip>
+//<optionally check for "tag.txt" in imgdir and do grouping based on it
 //go back and strip -<UNIQUESLUG> from all foldernames
