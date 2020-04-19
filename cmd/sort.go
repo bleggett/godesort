@@ -27,13 +27,12 @@ var separatorTextFile string = "title.txt"
 // sortCmd represents the sort command
 var sortCmd = &cobra.Command{
 	Use:   "sort",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Reorganizes and orders image subfolders",
+	Long: `Looks for CD images in subfolders within the provided image root, and orders
+them A-Z by image filename.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Also supports grouping by tags - place a 'tags.txt' file with a single line of text
+in every image subfolder you wish to group together.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("sort called on %s\n", path)
