@@ -45,16 +45,6 @@ in every image subfolder you wish to group together.`,
 
 func init() {
 	rootCmd.AddCommand(sortCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// sortCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// sortCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 
@@ -72,8 +62,6 @@ func buildMap(rootPath string) map[string][]ImageSet {
 		tag := getTagIfExist(filepath.Dir(match))
 
 		imgGroups[tag] = append(imgGroups[tag], ImageSet{filepath.Dir(match), filepath.Base(match), tag})
-
-		fmt.Printf("Adding Disc Image: %s at path %s with grouptag %s\n", filepath.Base(match), filepath.Dir(match), tag)
 	}
 
 	return imgGroups
@@ -87,7 +75,6 @@ func sortImageGroups(imgGrps map[string][]ImageSet) map[string][]ImageSet {
 			return imgGrps[grpTag][first].ImageName < imgGrps[grpTag][second].ImageName })
 	}
 
-	fmt.Println("By name", imgGrps)
 	return imgGrps
 }
 
@@ -103,13 +90,14 @@ func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) st
 
 		counter++
 
-		fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
 		os.Rename(iSet.SourceDir,newDir)
+		fmt.Printf("Renaming %s and related files\n", strings.TrimSuffix(iSet.ImageName, path.Ext(iSet.ImageName)))
 	}
 
 	for grpTag, imgSet := range imgGrps {
 		grpPath := path.Join(rootDir, fmt.Sprintf("%02d%s", counter, tempPostfix))
 		makeGroupDir(grpPath, grpTag)
+		fmt.Printf("Creating Tag Group: %s\n", grpTag)
 		counter++
 		
 		for _, iSet := range imgSet {
@@ -117,8 +105,8 @@ func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) st
 
 			counter++
 
-			fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
 			os.Rename(iSet.SourceDir,newDir)
+			fmt.Printf("Renaming %s and adding to the %s group \n", strings.TrimSuffix(iSet.ImageName, path.Ext(iSet.ImageName)), grpTag)
 		}
 	}
 
@@ -127,24 +115,20 @@ func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) st
 
 func makeGroupDir(grouppath string, grouptag string) {
 	//TODO handle error
-    os.Mkdir(grouppath, 0755)
+	os.Mkdir(grouppath, 0755)
 	data := []byte(fmt.Sprintf("%s\n", grouptag))
 	//TODO handle error
-    ioutil.WriteFile(filepath.Join(grouppath, separatorTextFile), data, 0644)
+	ioutil.WriteFile(filepath.Join(grouppath, separatorTextFile), data, 0644)
 }
 
 func finalRenameSortedDirs(rootDir string, tmpPostfix string) {
 	globber := fmt.Sprintf("%s/*%s", rootDir, tmpPostfix)
-	fmt.Printf("Globbing on %s\n", globber)
 	matches, _ := filepath.Glob(globber)
 	for _, match := range matches {
 		trimPath := strings.TrimSuffix(match, tmpPostfix)
-		fmt.Printf("Dropping postfix - moving %s to %s", match, trimPath)
-
 		if _, err := os.Stat(trimPath); !os.IsNotExist(err) {
-			fmt.Printf("Clearing out existing %s to %s-old\n", trimPath, trimPath)
-			//TODO handle rename error
-			os.Rename(trimPath, fmt.Sprintf("%s-old", trimPath))
+			//TODO handle remove error
+			os.RemoveAll(trimPath)
 		}
 		os.Rename(match, trimPath)
 	}
