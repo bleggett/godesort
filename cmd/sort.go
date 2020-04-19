@@ -5,6 +5,8 @@ import (
 	"log"
 	"sort"
 	"os"
+	"bufio"
+	"io/ioutil"
 	"strings"
 	"path"
 	"path/filepath"
@@ -16,10 +18,11 @@ import (
 type ImageSet struct {
 	SourceDir string
 	ImageName string
-	SortID int
+	GroupTag string
 }
 
 var imageExt string = "*.ccd"
+var separatorTextFile string = "title.txt"
 
 // sortCmd represents the sort command
 var sortCmd = &cobra.Command{
@@ -34,9 +37,9 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("sort called on %s\n", path)
-		imgSet := buildMap(path)
-		imgSet = sortImageSet(imgSet)
-		tmpSuffix := tempRenameSortedImageSet(path, imgSet)
+		imgGrps := buildMap(path)
+		imgGrps = sortImageGroups(imgGrps)
+		tmpSuffix := tempRenameSortedImageSets(path, imgGrps)
 		finalRenameSortedDirs(path, tmpSuffix)
 	},
 }
@@ -56,74 +59,123 @@ func init() {
 }
 
 
-func buildMap(rootPath string) []ImageSet {
+func buildMap(rootPath string) map[string][]ImageSet {
 	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
 		log.Fatalf("Path %s does not exist!", rootPath)
 	}
 
-	var imgSet []ImageSet
+	imgGroups := make(map[string][]ImageSet)
 
 	globber := filepath.Join(rootPath, "**", imageExt)
 	fmt.Println("Globbing on: ", globber)
 	matches, _ := filepath.Glob(globber)
-    for _, match := range matches {
-		imgSet = append(imgSet, ImageSet{filepath.Dir(match), filepath.Base(match), 0})
+	for _, match := range matches {
+		tag := getTagIfExist(filepath.Dir(match))
 
-		fmt.Printf("Adding Disc Image: %s at path %s\n", filepath.Base(match), filepath.Dir(match))
+		imgGroups[tag] = append(imgGroups[tag], ImageSet{filepath.Dir(match), filepath.Base(match), tag})
+
+		fmt.Printf("Adding Disc Image: %s at path %s with grouptag %s\n", filepath.Base(match), filepath.Dir(match), tag)
 	}
 
-	return imgSet
+	return imgGroups
 }
 
 
-func sortImageSet(imgSet []ImageSet) []ImageSet {
-	sort.Slice(imgSet, func(first, second int) bool {
-		return imgSet[first].ImageName < imgSet[second].ImageName })
+func sortImageGroups(imgGrps map[string][]ImageSet) map[string][]ImageSet {
 
-	fmt.Println("By name", imgSet)
-	return imgSet
+	for grpTag, _ := range imgGrps {
+		sort.Slice(imgGrps[grpTag], func(first, second int) bool {
+			return imgGrps[grpTag][first].ImageName < imgGrps[grpTag][second].ImageName })
+	}
+
+	fmt.Println("By name", imgGrps)
+	return imgGrps
 }
 
-func tempRenameSortedImageSet(rootDir string, imgSet []ImageSet) string {
+func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) string {
 	guid := xid.New()
 	tempPostfix := fmt.Sprintf("-%s", guid.String())
+	var counter int = 2
+	ungroupedImgSet := imgGrps[""]
+	delete(imgGrps, "")
 
-	for i, iSet := range imgSet {
-		//TODO Pad name iterator with leading zeroes
-		newDir := path.Join(rootDir, fmt.Sprintf("%02d%s", (i+2), tempPostfix))
+	for _, iSet := range ungroupedImgSet {
+		newDir := path.Join(rootDir, fmt.Sprintf("%02d%s", counter, tempPostfix))
 
-		// if _, err := os.Stat(newDir); !os.IsNotExist(err) {
-		//     // err := os.Rename(newDir, fmt.Sprintf("%s-old", newDir))
-		// 	fmt.Printf("Clearing out existing %s to %s-old\n", newDir, newDir)
-		// }
+		counter++
+
 		fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
 		os.Rename(iSet.SourceDir,newDir)
 	}
 
+	for grpTag, imgSet := range imgGrps {
+		grpPath := path.Join(rootDir, fmt.Sprintf("%02d%s", counter, tempPostfix))
+		makeGroupDir(grpPath, grpTag)
+		counter++
+		
+		for _, iSet := range imgSet {
+			newDir := path.Join(rootDir, fmt.Sprintf("%02d%s", counter, tempPostfix))
+
+			counter++
+
+			fmt.Printf("Renaming %s to %s\n", iSet.SourceDir, newDir)
+			os.Rename(iSet.SourceDir,newDir)
+		}
+	}
+
 	return tempPostfix
+}
+
+func makeGroupDir(grouppath string, grouptag string) {
+	//TODO handle error
+    os.Mkdir(grouppath, 0755)
+	data := []byte(fmt.Sprintf("%s\n", grouptag))
+	//TODO handle error
+    ioutil.WriteFile(filepath.Join(grouppath, separatorTextFile), data, 0644)
 }
 
 func finalRenameSortedDirs(rootDir string, tmpPostfix string) {
 	globber := fmt.Sprintf("%s/*%s", rootDir, tmpPostfix)
 	fmt.Printf("Globbing on %s\n", globber)
 	matches, _ := filepath.Glob(globber)
-    for _, match := range matches {
+	for _, match := range matches {
 		trimPath := strings.TrimSuffix(match, tmpPostfix)
 		fmt.Printf("Dropping postfix - moving %s to %s", match, trimPath)
 
 		if _, err := os.Stat(trimPath); !os.IsNotExist(err) {
 			fmt.Printf("Clearing out existing %s to %s-old\n", trimPath, trimPath)
 			//TODO handle rename error
-		    os.Rename(trimPath, fmt.Sprintf("%s-old", trimPath))
+			os.Rename(trimPath, fmt.Sprintf("%s-old", trimPath))
 		}
 		os.Rename(match, trimPath)
-    }
+	}
 }
-//scan dir
-//build map of path/imagename
 
-//Sort alphabetically based on imagename
-//rename all to correctfolderid-<UNIQUE SLUG>
-//<optionally test if current path is correct and skip>
-//<optionally check for "tag.txt" in imgdir and do grouping based on it
-//go back and strip -<UNIQUESLUG> from all foldernames
+func getTagIfExist(folder string) string {
+	tagFile := filepath.Join(folder, "tag.txt")
+	if _, err := os.Stat(tagFile); !os.IsNotExist(err) {
+		return readTag(tagFile)
+	}
+	return ""
+}
+
+func readTag(tagFile string) string {
+	file, err := os.Open(tagFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	tagName := scanner.Text()
+	return tagName
+}
+//TODO <optionally test if current path is correct and skip>
+//TODO <optionally check for "tag.txt" in imgdir and do grouping based on it
+// For the group sort, use a mapof ImageSet arrays, where the key is the group tag
+// then they can be individually sorted and then concatenated
