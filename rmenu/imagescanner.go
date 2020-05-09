@@ -21,7 +21,7 @@ func BuildMap(rootPath string) map[string][]ImageSet {
 		log.Fatalf("Path %s does not exist!", rootPath)
 	}
 
-	imgGroups := make(map[string][]ImageSet)
+	imgGroups := make(map[string][]ImageSet, 0)
 
 	globber := filepath.Join(rootPath, "**", imageExt)
 	fmt.Println("Globbing on: ", globber)
@@ -29,6 +29,7 @@ func BuildMap(rootPath string) map[string][]ImageSet {
 	for _, match := range matches {
 		tag := getTagIfExist(filepath.Dir(match))
 
+		log.Printf("Found image: %s", match)
 		imgGroups[tag] = append(imgGroups[tag], ImageSet{filepath.Dir(match), filepath.Base(match), tag})
 	}
 
@@ -59,3 +60,9 @@ func readTag(tagFile string) string {
 	tagName := scanner.Text()
 	return tagName
 }
+
+//INIScanner
+//TODO
+//For every numbered subfolder in the root
+//Either look for an .img file
+//or look for a TITLE.TXT file, or whatever

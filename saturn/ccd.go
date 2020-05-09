@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"path/filepath"
 	"log"
 	"strings"
 	"strconv"
@@ -16,6 +17,8 @@ func ReadDisc_CCD(imgName string) SaturnImage {
 	}
 	defer fd.Close()
 
+	dir := filepath.Dir(imgName)
+    imageCountDir := filepath.Base(dir)
     number, count := getDiscNumber_CCD(fd)
 
 	return SaturnImage{
@@ -25,6 +28,7 @@ func ReadDisc_CCD(imgName string) SaturnImage {
 		Region: getDiscRegion_CCD(fd),
 		Version: getDiscVersion_CCD(fd),
 		Date: getDiscDate_CCD(fd),
+		Order: imageCountDir,
 	}
 }
 
@@ -35,8 +39,12 @@ func getDiscTitle_CCD(fd *os.File) string {
 
 func getDiscNumber_CCD(fd *os.File) (int, int) {
 	counts := strings.Split(getStringAtOffset(fd, 75, 3), "/")
-	number, _ := strconv.Atoi(counts[0])
-	count, _ := strconv.Atoi(counts[1])
+	number := 1
+	count := 1
+	if len(counts) > 1 {
+		number, _ = strconv.Atoi(counts[0])
+		count, _ = strconv.Atoi(counts[1])
+	}
 	return number, count
 }
 
