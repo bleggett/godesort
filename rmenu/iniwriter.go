@@ -1,4 +1,4 @@
-package rmenuiniwriter
+package rmenu
 
 import (
 	"fmt"

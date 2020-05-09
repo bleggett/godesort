@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/bleggett/godesort/saturn"
-	"github.com/bleggett/godesort/rmenuiniwriter"
+	"github.com/bleggett/godesort/rmenu"
 )
 
 // generateCmd represents the generate command
@@ -23,7 +23,7 @@ to quickly create a Cobra application.`,
 		discs := make([]saturn.SaturnImage, 1)
 		discs[0] = res
 		fmt.Printf("Disc image: %+v \n", res)
-		rmenuiniwriter.WriteAllDiscInfo(discs)
+		rmenu.WriteAllDiscInfo(discs)
 	},
 }
 

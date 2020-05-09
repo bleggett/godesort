@@ -2,26 +2,18 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"os"
-	"bufio"
 	"io/ioutil"
 	"strings"
 	"path"
 	"path/filepath"
 	"github.com/rs/xid"
 	"github.com/spf13/cobra"
+    "github.com/bleggett/godesort/rmenu"
 )
 
 
-type ImageSet struct {
-	SourceDir string
-	ImageName string
-	GroupTag string
-}
-
-var imageExt string = "*.ccd"
 var separatorTextFile string = "title.txt"
 
 // sortCmd represents the sort command
@@ -36,7 +28,7 @@ in every image subfolder you wish to group together.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("sort called on %s\n", path)
-		imgGrps := buildMap(path)
+		imgGrps := rmenu.BuildMap(path)
 		imgGrps = sortImageGroups(imgGrps)
 		tmpSuffix := tempRenameSortedImageSets(path, imgGrps)
 		finalRenameSortedDirs(path, tmpSuffix)
@@ -47,28 +39,7 @@ func init() {
 	rootCmd.AddCommand(sortCmd)
 }
 
-
-func buildMap(rootPath string) map[string][]ImageSet {
-	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
-		log.Fatalf("Path %s does not exist!", rootPath)
-	}
-
-	imgGroups := make(map[string][]ImageSet)
-
-	globber := filepath.Join(rootPath, "**", imageExt)
-	fmt.Println("Globbing on: ", globber)
-	matches, _ := filepath.Glob(globber)
-	for _, match := range matches {
-		tag := getTagIfExist(filepath.Dir(match))
-
-		imgGroups[tag] = append(imgGroups[tag], ImageSet{filepath.Dir(match), filepath.Base(match), tag})
-	}
-
-	return imgGroups
-}
-
-
-func sortImageGroups(imgGrps map[string][]ImageSet) map[string][]ImageSet {
+func sortImageGroups(imgGrps map[string][]rmenu.ImageSet) map[string][]rmenu.ImageSet {
 
 	for grpTag, _ := range imgGrps {
 		sort.Slice(imgGrps[grpTag], func(first, second int) bool {
@@ -78,7 +49,7 @@ func sortImageGroups(imgGrps map[string][]ImageSet) map[string][]ImageSet {
 	return imgGrps
 }
 
-func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) string {
+func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]rmenu.ImageSet) string {
 	guid := xid.New()
 	tempPostfix := fmt.Sprintf("-%s", guid.String())
 	var counter int = 2
@@ -134,31 +105,8 @@ func finalRenameSortedDirs(rootDir string, tmpPostfix string) {
 	}
 }
 
-func getTagIfExist(folder string) string {
-	tagFile := filepath.Join(folder, "tag.txt")
-	if _, err := os.Stat(tagFile); !os.IsNotExist(err) {
-		return readTag(tagFile)
-	}
-	return ""
-}
 
-func readTag(tagFile string) string {
-	file, err := os.Open(tagFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	tagName := scanner.Text()
-	return tagName
-}
 //TODO <optionally test if current path is correct and skip>
 //TODO <optionally check for "tag.txt" in imgdir and do grouping based on it
-// For the group sort, use a mapof ImageSet arrays, where the key is the group tag
+// For the group sort, use a mapof rmenu.ImageSet arrays, where the key is the group tag
 // then they can be individually sorted and then concatenated
