@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
+	"os"
 	"github.com/spf13/cobra"
 	"github.com/bleggett/godesort/saturn"
 	"github.com/bleggett/godesort/rmenu"
@@ -45,3 +47,20 @@ func readAllDiscInfo(path string) []saturn.SaturnImage {
 
 	return images
 }
+
+func scanOrderedRoot(rootPath string) {
+	file, err := os.Open(rootPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	names, err := file.Readdirnames(0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(names)
+}
+//INIScanner
+//TODO
+//For every numbered subfolder in the root
+//Either look for an .img file
+//or look for a TITLE.TXT file, or whatever

@@ -60,9 +60,3 @@ func readTag(tagFile string) string {
 	tagName := scanner.Text()
 	return tagName
 }
-
-//INIScanner
-//TODO
-//For every numbered subfolder in the root
-//Either look for an .img file
-//or look for a TITLE.TXT file, or whatever
