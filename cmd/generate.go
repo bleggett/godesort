@@ -3,7 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/bleggett/godesort/saturnimage"
+	"github.com/bleggett/godesort/saturn"
+	"github.com/bleggett/godesort/rmenuiniwriter"
 )
 
 // generateCmd represents the generate command
@@ -18,8 +19,11 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("generate called")
-		res := saturnimage.ReadDisc_CCD("/Volumes/Games/test/05/Battle Garegga (Japan).img")
+		res := saturn.ReadDisc_CCD("/Volumes/Games/test/05/Battle Garegga (Japan).img")
+		discs := make([]saturn.SaturnImage, 1)
+		discs[0] = res
 		fmt.Printf("Disc image: %+v \n", res)
+		rmenuiniwriter.WriteAllDiscInfo(discs)
 	},
 }
 

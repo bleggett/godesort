@@ -1,4 +1,4 @@
-package saturnimage
+package saturn
 
 import (
 	"bufio"
@@ -19,12 +19,12 @@ func ReadDisc_CCD(imgName string) SaturnImage {
     number, count := getDiscNumber_CCD(fd)
 
 	return SaturnImage{
-		title: getDiscTitle_CCD(fd),
-		discNumber: number,
-		discCount: count,
-		discRegion: getDiscRegion_CCD(fd),
-		discVersion: getDiscVersion_CCD(fd),
-		discDate: getDiscDate_CCD(fd),
+		Title: getDiscTitle_CCD(fd),
+		DiscNumber: number,
+		DiscCount: count,
+		Region: getDiscRegion_CCD(fd),
+		Version: getDiscVersion_CCD(fd),
+		Date: getDiscDate_CCD(fd),
 	}
 }
 
