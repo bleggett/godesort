@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/bleggett/godesort/saturn"
 	"github.com/bleggett/godesort/rmenu"
+	"github.com/bleggett/godesort/util"
 )
 
 // generateCmd represents the generate command
@@ -23,7 +24,7 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("generate called on %s\n", path)
-		images := readAllDiscInfo(path)
+		images := scanOrderedRoot(path)
 		rmenu.WriteAllDiscInfo(images)
 	},
 }
@@ -32,35 +33,60 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 }
 
-func readAllDiscInfo(path string) []saturn.SaturnImage {
-	images := make([]saturn.SaturnImage, 1)
+func scanOrderedRoot(rootPath string) []saturn.SaturnImage {
+	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
+		log.Fatalf("Path %s does not exist!", rootPath)
+	}
+	file, err := os.Open(rootPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	imgSetGroups := rmenu.BuildMap(path)
+	files, err := file.Readdir(0)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	for _, imgSet := range imgSetGroups {
-		for _, img := range imgSet {
-			res := saturn.ReadDisc_CCD(filepath.Join(img.SourceDir, "/", img.ImageName))
-			fmt.Printf("Disc image: %+v \n", res)
-			images = append(images, res)
+	return analyzeFolders(files, rootPath)
+}
+
+func analyzeFolders(subfolders []os.FileInfo, rootPath string) []saturn.SaturnImage {
+	images := make([]saturn.SaturnImage, 0)
+	for _, file := range subfolders {
+		if file.IsDir() {
+			globber := filepath.Join(rootPath, file.Name(), "*.img")
+			fmt.Println("Globbing on: ", globber)
+			matches, _ := filepath.Glob(globber)
+			if len(matches) > 0 {
+				res := saturn.ReadDisc_CCD(filepath.Join(matches[0]))
+				fmt.Printf("Disc image: %+v \n", res)
+				images = append(images, res)
+			} else {
+				//TODO constify title txt
+				titleFile := filepath.Join(rootPath, "/", file.Name())
+				images = append(images, buildSeparatorEntry(titleFile, "title.txt"))
+			}
 		}
 	}
 
 	return images
 }
 
-func scanOrderedRoot(rootPath string) {
-	file, err := os.Open(rootPath)
-	if err != nil {
-		log.Fatal(err)
+func buildSeparatorEntry(titlePath string, titlefile string) saturn.SaturnImage {
+
+	title := util.ReadOneLineFileIfExists(titlePath, titlefile)
+	dir := filepath.Dir(titlePath)
+    imageCountDir := filepath.Base(dir)
+
+	if title == "" {
+		title = "EMPTY DIR"
 	}
-	names, err := file.Readdirnames(0)
-	if err != nil {
-		log.Fatal(err)
+
+	return saturn.SaturnImage{
+		Title: title,
+		DiscNumber: 1,
+		DiscCount: 1,
+		Order: imageCountDir,
 	}
-	fmt.Println(names)
 }
-//INIScanner
-//TODO
-//For every numbered subfolder in the root
-//Either look for an .img file
-//or look for a TITLE.TXT file, or whatever
+

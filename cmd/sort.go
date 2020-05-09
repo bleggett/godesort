@@ -4,17 +4,21 @@ import (
 	"fmt"
 	"sort"
 	"os"
+	"log"
 	"io/ioutil"
 	"strings"
 	"path"
 	"path/filepath"
 	"github.com/rs/xid"
 	"github.com/spf13/cobra"
-    "github.com/bleggett/godesort/rmenu"
+    "github.com/bleggett/godesort/util"
 )
 
 
 var separatorTextFile string = "title.txt"
+
+var imageExt string = "*.ccd"
+var tagFile string = "tag.txt"
 
 // sortCmd represents the sort command
 var sortCmd = &cobra.Command{
@@ -28,7 +32,7 @@ in every image subfolder you wish to group together.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("imageroot")
 		fmt.Printf("sort called on %s\n", path)
-		imgGrps := rmenu.BuildMap(path)
+		imgGrps := BuildMap(path)
 		imgGrps = sortImageGroups(imgGrps)
 		tmpSuffix := tempRenameSortedImageSets(path, imgGrps)
 		finalRenameSortedDirs(path, tmpSuffix)
@@ -39,7 +43,34 @@ func init() {
 	rootCmd.AddCommand(sortCmd)
 }
 
-func sortImageGroups(imgGrps map[string][]rmenu.ImageSet) map[string][]rmenu.ImageSet {
+type ImageSet struct {
+	SourceDir string
+	ImageName string
+	GroupTag string
+}
+
+
+func BuildMap(rootPath string) map[string][]ImageSet {
+	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
+		log.Fatalf("Path %s does not exist!", rootPath)
+	}
+
+	imgGroups := make(map[string][]ImageSet, 0)
+
+	globber := filepath.Join(rootPath, "**", imageExt)
+	fmt.Println("Globbing on: ", globber)
+	matches, _ := filepath.Glob(globber)
+	for _, match := range matches {
+		tag := util.ReadOneLineFileIfExists(filepath.Dir(match), tagFile)
+
+		log.Printf("Found image: %s", match)
+		imgGroups[tag] = append(imgGroups[tag], ImageSet{filepath.Dir(match), filepath.Base(match), tag})
+	}
+
+	return imgGroups
+}
+
+func sortImageGroups(imgGrps map[string][]ImageSet) map[string][]ImageSet {
 
 	for grpTag, _ := range imgGrps {
 		sort.Slice(imgGrps[grpTag], func(first, second int) bool {
@@ -49,7 +80,7 @@ func sortImageGroups(imgGrps map[string][]rmenu.ImageSet) map[string][]rmenu.Ima
 	return imgGrps
 }
 
-func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]rmenu.ImageSet) string {
+func tempRenameSortedImageSets(rootDir string, imgGrps map[string][]ImageSet) string {
 	guid := xid.New()
 	tempPostfix := fmt.Sprintf("-%s", guid.String())
 	var counter int = 2
