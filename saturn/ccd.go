@@ -21,8 +21,12 @@ func ReadDisc_CCD(imgName string) SaturnImage {
     imageCountDir := filepath.Base(dir)
     number, count := getDiscNumber_CCD(fd)
 
+	fileTitle := filepath.Base(imgName)
+	extension := filepath.Ext(imgName)
+	fileTitle = fileTitle[0:len(fileTitle)-len(extension)]
+
 	return SaturnImage{
-		Title: getDiscTitle_CCD(fd),
+		Title: fileTitle,
 		DiscNumber: number,
 		DiscCount: count,
 		Region: getDiscRegion_CCD(fd),
