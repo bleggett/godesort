@@ -24,7 +24,7 @@ currently supports the following operations:
   
 > NOTE: gODEsort builds the RMENU menu using the **image filenames for the menu
 > entries**, rather than the disc header titles that the native RMENU tool
-> uses - which means you can name your images according to how you want them to
+> uses - which means you can simply name your images according to how you want them to
 > be displayed and ordered in the RMENU menu.
 
 > Note: Currently gODESort only works with CCD image types and the Phoebe/Rhea
